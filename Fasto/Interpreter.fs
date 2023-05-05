@@ -163,8 +163,16 @@ let rec evalExp (e : UntypedExp, vtab : VarTable, ftab : FunTable) : Value =
           | (_, _) -> reportWrongType "left operand of *" Int res1 (expPos e1)
   | And (_, _, _) ->
         failwith "Unimplemented interpretation of negate"
-  | Or (_, _, _) ->
-        failwith "Unimplemented interpretation of negate"
+  | Or (e1, e2, pos) ->
+        let res1 = evalExp(e1, vtab, ftab)
+        let res2 = evalExp(e2, vtab, ftab)
+        match (res1, res2) with
+          | (BoolVal true, BoolVal false) -> BoolVal true
+          | (BoolVal false, BoolVal true) -> BoolVal true
+          | (BoolVal true, BoolVal true) -> BoolVal true
+          | (BoolVal false, BoolVal false) -> BoolVal false
+          | (BoolVal _, _) -> reportWrongType "right operand of ||" Int res2 (expPos e2)
+          | (_, _) -> reportWrongType "left operand of ||" Int res1 (expPos e1)
   | Not(_, _) ->
         failwith "Unimplemented interpretation of negate"
   | Negate(_, _) ->
