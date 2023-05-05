@@ -354,8 +354,13 @@ let rec compileExp  (e      : TypedExp)
   | And (_, _, _) ->
       failwith "Unimplemented code generation of not"
 
-  | Or (_, _, _) ->
-      failwith "Unimplemented code generation of not"
+  | Or (e1, e2, pos) ->
+      let t1 = newReg "or_L"
+      let t2 = newReg "or_R"
+      let code1 = compileExp e1 vtable t1
+      let code2 = compileExp e2 vtable t2
+      code1 @ code2 @ [OR (place,t1,t2)]
+
   (* Indexing:
      1. generate code to compute the index
      2. check index within bounds

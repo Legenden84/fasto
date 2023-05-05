@@ -140,8 +140,9 @@ and checkExp  (ftab : FunTable)
     | And (_, _, _) ->
         failwith "Unimplemented type check of not"
 
-    | Or (_, _, _) ->
-        failwith "Unimplemented type check of not"
+    | Or (e1, e2, pos) ->
+        let (e1_dec, e2_dec) = checkBinOp ftab vtab (pos, Bool, e1, e2)
+        (Bool, Or (e1_dec, e2_dec, pos))
 
     | Not (_, _) ->
         failwith "Unimplemented type check of not"
