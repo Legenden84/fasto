@@ -1,0 +1,5 @@
+fun int main() =
+    let div = 2/2 in
+    let tmp = write(div) in
+    let zero = 2/0 in
+    zero
