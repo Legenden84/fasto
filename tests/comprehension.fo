@@ -6,3 +6,4 @@ fun [int] main() =
   let x = iota (n)   in
   let y = iota (n)   in
   write_int_arr ([int r*r | i <- x, j <-y; int r = (i+j) / 2; r - (r/5)*5 == 0 ])
+// lalala testing git stuff
