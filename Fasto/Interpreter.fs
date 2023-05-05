@@ -153,7 +153,13 @@ let rec evalExp (e : UntypedExp, vtab : VarTable, ftab : FunTable) : Value =
           | (IntVal _, _) -> reportWrongType "right operand of *" Int res2 (expPos e2)
           | (_, _) -> reportWrongType "left operand of *" Int res1 (expPos e1)
   | Divide(e1, e2, pos) ->
-        failwith "Unimplemented interpretation of negate"
+        let res1 = evalExp(e1, vtab, ftab)
+        let res2 = evalExp(e2, vtab, ftab)
+        match (res1, res2) with
+          | (IntVal n1, IntVal 0) -> failwith "cannot divide by zero"
+          | (IntVal n1, IntVal n2) -> IntVal (n1 / n2)
+          | (IntVal _, _) -> reportWrongType "right operand of *" Int res2 (expPos e2)
+          | (_, _) -> reportWrongType "left operand of *" Int res1 (expPos e1)
   | And (_, _, _) ->
         failwith "Unimplemented interpretation of negate"
   | Or (_, _, _) ->

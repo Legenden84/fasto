@@ -134,7 +134,8 @@ and checkExp  (ftab : FunTable)
         (Int, Times (e1_dec, e2_dec, pos))
 
     | Divide (e1, e2, pos) ->
-        failwith "Unimplemented type check of not"
+        let (e1_dec, e2_dec) = checkBinOp ftab vtab (pos, Int, e1, e2)
+        (Int, Times (e1_dec, e2_dec, pos))
 
     | And (_, _, _) ->
         failwith "Unimplemented type check of not"
