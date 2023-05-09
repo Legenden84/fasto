@@ -158,7 +158,7 @@ let rec evalExp (e : UntypedExp, vtab : VarTable, ftab : FunTable) : Value =
         match (res1, res2) with
           | (IntVal n1, IntVal 0) -> raise (Error("cannot divide by zero"))
           | (IntVal n1, IntVal n2) -> IntVal (n1 / n2)
-           | _ -> reportWrongType "Cannot perform DIV because both expression must be of type INT" Int res1 (expPos e1)
+          | _ -> reportWrongType "Cannot perform DIV because both expression must be of type INT" Int res1 (expPos e1)
   | And (e1, e2, pos) ->
         let res1 = evalExp(e1, vtab, ftab)
         let res2 = evalExp(e2, vtab, ftab)
