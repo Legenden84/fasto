@@ -1,0 +1,7 @@
+fun int main() =
+    let x = 'a' in
+    let y = 'b' in
+    if (x == 'a') || (y == 'b') then
+        1
+    else
+        0

@@ -1,0 +1,4 @@
+fun int main() =
+    let x = 4 in
+    let y = 0 in
+    x / y
