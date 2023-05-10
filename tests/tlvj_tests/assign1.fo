@@ -1,3 +1,4 @@
+// a function for multiplication that also handles negative numbers
 fun int mul(int a, int b) =
   if (b == 0) then
     0
@@ -6,21 +7,27 @@ fun int mul(int a, int b) =
   else
     0 - mul(a, 0 - b)
 
+// a function for reading input
 fun int readInt(int i) =
   read(int)
 
-fun int square(int a) =
-  mul(a, a)
-
+// a function for adding two integers
 fun int add(int x, int y) =
   x + y
 
 fun int main() =
+  // defining the variable n from the input array
   let n = readInt(0) in
+
   if (n < 1) then
+    // error message when n is less or equal to zero
     let output = write("Incorrect Input!") in 0
   else
+    // creates an array of length n
     let arr = map(readInt, iota(n)) in
+    // calculates the differences of each consecutive element in the array
     let difs = map(fn int (int i) => if (i == 0) then arr[0] else arr[i] - arr[i-1], iota(n)) in
+    // maos the squares to the difs array
     let map_squares = map(fn int (int i) => mul(i, i), difs) in
+    //returns value
     write(reduce(add, 0, map_squares))
