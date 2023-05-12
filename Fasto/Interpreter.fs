@@ -162,10 +162,10 @@ let rec evalExp (e : UntypedExp, vtab : VarTable, ftab : FunTable) : Value =
   | And (e1, e2, pos) ->
         let res1 = evalExp(e1, vtab, ftab)
         let res2 = evalExp(e2, vtab, ftab)
-        match (res1, res2) with
-          | (BoolVal true, BoolVal true) -> BoolVal true
-          | (BoolVal _, _) -> BoolVal false
-          | (_, _) -> reportWrongType "left operand of &&" Int res1 (expPos e1)
+        match (res1) with
+          | (BoolVal true) -> res2
+          | (BoolVal false) -> BoolVal false
+          | (_) -> reportWrongType "left operand of &&" Int res1 (expPos e1)
   | Or (e1, e2, pos) ->
         let res1 = evalExp(e1, vtab, ftab)
         let res2 = evalExp(e2, vtab, ftab)
