@@ -47,8 +47,11 @@ let parse_error_rich =
 %token <Position> LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY
 
 %nonassoc ifprec letprec
-%left DEQ LTH
-%left PLUS MINUS
+%left IF THEN ELSE LET IN EOF
+%left PLUS MINUS LESS
+%left MUL DIV
+%left DEQ LTH AND OR EQ MAP REDUCE IOTA ARROW
+%left LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY
 
 %start Prog
 %type <AbSyn.UntypedProg> Prog
