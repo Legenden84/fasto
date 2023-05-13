@@ -66,6 +66,7 @@ let keyword (s, pos) =
 (* true false not *)
        | "true"         -> Parser.TRUE pos
        | "false"        -> Parser.FALSE pos
+       | "not"          -> Parser.NOt pos
 
 (* specials: *)
        | "iota"         -> Parser.IOTA pos
