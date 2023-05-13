@@ -257,7 +257,7 @@ let rec compileExp  (e      : TypedExp)
       code1 @ [XORI (place,t1,1)]
 
   | Negate (e1, pos) ->
-      failwith "Unimplemented code generation of negate"
+      compileExp (Minus (Constant (IntVal 0, pos), e1, pos)) vtable place
 
   | Let (dec, e1, pos) ->
       let (code1, vtable1) = compileDec dec vtable
