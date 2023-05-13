@@ -1,0 +1,4 @@
+fun int main() =
+    let x = write(true) in
+    let y = write(not(x)) in
+    0
