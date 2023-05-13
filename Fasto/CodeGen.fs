@@ -167,9 +167,9 @@ let rec compileExp  (e      : TypedExp)
   | Constant (IntVal n, pos) ->
       [ LI (place, n) ] (* assembler will generate appropriate
                            instruction sequence for any value n *)
-  | Constant (BoolVal p, _) ->
+  | Constant (BoolVal true, _) -> [ LI (place, 1) ]
+  | Constant (BoolVal false, _) -> [ LI (place, 0) ]
       (* TODO project task 1: represent `true`/`false` values as `1`/`0` *)
-      failwith "Unimplemented code generation of boolean constants"
   | Constant (CharVal c, pos) -> [ LI (place, int c) ]
 
   (* Create/return a label here, collect all string literals of the program
