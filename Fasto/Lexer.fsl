@@ -71,6 +71,9 @@ let keyword (s, pos) =
        | "write"        -> Parser.WRITE pos
        | _              -> Parser.ID (s, pos)
 
+(* true false not *)
+       | "true"         -> Parser.TRUE pos
+       | "false"        -> Parser.FALSE pos
 }
 
 rule Token = parse
