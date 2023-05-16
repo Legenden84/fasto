@@ -86,6 +86,16 @@ let rec checkBinOp  (ftab : FunTable)
       reportTypeWrong "2nd argument of binary operator" t t2 pos
     (e1', e2')
 
+(* Same function as checkBinOp, just with one argument *)
+and checkOneOp      (ftab : FunTable)
+                    (vtab : VarTable)
+                    (pos : Position, t  : Type, e1 : UntypedExp)
+                  : TypedExp =
+    let (t1, e1') = checkExp ftab vtab e1
+    if t1 <> t then
+      reportTypeWrong "Wrong argument for operation" t t1 pos
+    e1'
+
 (* Determine the type of an expression.  On the way, decorate each
    node in the syntax tree with inferred types.  The result consists
    of a pair: the result type tupled with the type-decorated
@@ -145,11 +155,13 @@ and checkExp  (ftab : FunTable)
         let (e1_dec, e2_dec) = checkBinOp ftab vtab (pos, Bool, e1, e2)
         (Bool, Or (e1_dec, e2_dec, pos))
 
-    | Not (_, _) ->
-        failwith "Unimplemented type check of not"
+    | Not (e1, pos) ->
+        let e1_dec = checkOneOp ftab vtab (pos, Bool, e1)
+        (Bool, Not (e1_dec, pos))
 
-    | Negate (_, _) ->
-        failwith "Unimplemented type check of negate"
+    | Negate (e1, pos) ->
+        let e1_dec = checkOneOp ftab vtab (pos, Int, e1)
+        (Int, Negate (e1_dec, pos))
 
     (* The types for e1, e2 must be the same. The result is always a Bool. *)
     | Equal (e1, e2, pos) ->
