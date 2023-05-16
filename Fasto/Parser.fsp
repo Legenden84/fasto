@@ -36,6 +36,7 @@ let parse_error_rich =
 //   TODO: project task 4: array comprehension
 //////////////////////////////////////////////////////////////////////
 
+
 %token <int * Position> NUM
 %token <char * Position> CHARLIT
 %token <string * Position> ID STRINGLIT
@@ -45,10 +46,11 @@ let parse_error_rich =
 %token <Position> DEQ LTH AND OR EQ MAP REDUCE IOTA ARROW
 %token <Position> FUN FN COMMA SEMICOLON READ WRITE
 %token <Position> LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY
-%token <Position> TRUE FALSE NOT
+%token <Position> TRUE FALSE NOT NEGATE
 
 %nonassoc ifprec letprec
 %nonassoc NOT
+%nonassoc NEGATE
 %left IF THEN ELSE LET IN EOF
 %left PLUS MINUS LESS
 %left MUL DIV
@@ -105,6 +107,7 @@ Exp : NUM            { Constant (IntVal (fst $1), snd $1) }
     | TRUE           { Constant (BoolVal true, $1) }
     | FALSE          { Constant (BoolVal false, $1) }
     | NOT Exp        { Not ($2, $1) }
+    | NEGATE Exp     { Negate ($2, $1) }
     | Exp PLUS  Exp  { Plus ($1, $3, $2) }
     | Exp MINUS Exp  { Minus($1, $3, $2) }
     | Exp MUL   Exp  { Times($1, $3, $2) }
