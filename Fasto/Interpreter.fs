@@ -184,6 +184,7 @@ let rec evalExp (e : UntypedExp, vtab : VarTable, ftab : FunTable) : Value =
           | IntVal n -> IntVal (-n)
           | _ -> failwith "Invalid NEGATE operation"
 
+
   | Equal(e1, e2, pos) ->
         let r1 = evalExp(e1, vtab, ftab)
         let r2 = evalExp(e2, vtab, ftab)

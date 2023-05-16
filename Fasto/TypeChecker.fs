@@ -301,6 +301,7 @@ and checkExp  (ftab : FunTable)
     | Replicate (_, _, _, _) ->
         failwith "Unimplemented type check of replicate"
 
+
     (* TODO project task 2: Hint for `filter(f, arr)`
         Look into the type-checking lecture slides for the type rule of `map`
         and think of what needs to be changed for filter (?)
