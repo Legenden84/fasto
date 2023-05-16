@@ -55,6 +55,7 @@ let parse_error_rich =
 %left NEGATE
 
 
+
 %start Prog
 %type <AbSyn.UntypedProg> Prog
 %type <AbSyn.UntypedFunDec list> FunDecs
