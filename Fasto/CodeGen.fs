@@ -257,8 +257,12 @@ let rec compileExp  (e      : TypedExp)
       let code1 = compileExp e1 vtable t1
       code1 @ [XORI (place,t1,1)]
 
-  | Negate (e1, pos) ->
-      compileExp (Minus (Constant (IntVal 0, pos), e1, pos)) vtable place
+  | Negate (e2, pos) ->
+    let t1 = newReg "negate_zero"
+    let t2 = newReg "negate_exp"
+    let code1 = compileExp (Constant (IntVal 0, pos)) vtable t1
+    let code2 = compileExp e2 vtable t2
+    code1 @ code2 @ [SUB (place,t1,t2)]
 
   | Let (dec, e1, pos) ->
       let (code1, vtable1) = compileDec dec vtable
