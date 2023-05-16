@@ -288,8 +288,19 @@ let rec evalExp (e : UntypedExp, vtab : VarTable, ftab : FunTable) : Value =
          under predicate `p`, i.e., `p(a) = true`;
        - create an `ArrayVal` from the (list) result of the previous step.
   *)
-  | Filter (_, _, _, _) ->
-        failwith "Unimplemented interpretation of filter"
+  | Filter (farg, arrexp, _, pos) ->
+        let arr  = evalExp(arrexp, vtab, ftab)
+        let farg_ret_type = rtpFunArg farg ftab pos
+        if farg_ret_type = Bool then
+          match arr with
+            | ArrayVal (lst,tp1) ->
+                let mlst = List.filter (fun x -> (evalFunArg (farg, vtab, ftab, pos, [x])) = BoolVal true) lst
+                ArrayVal (mlst, farg_ret_type)
+            | otherwise -> reportNonArray "2nd argument of \"filter\"" arr pos
+        else
+          raise (MyError ("Interpreter error: Wrong return type of 1st argument of filter. Function return type must be Bool", pos))
+          //failwith "Interpreter error: Wrong return type of 1st argument of filter. Function return type must be Bool"
+
 
   (* TODO project task 2: `scan(f, ne, arr)`
      Implementation similar to reduce, except that it produces an array

@@ -1,4 +1,3 @@
-
 %{
 
 let p0 = (0,0)
@@ -43,7 +42,7 @@ let parse_error_rich =
 %token <Position> IF THEN ELSE LET IN EOF
 %token <Position> INT CHAR BOOL
 %token <Position> PLUS MINUS MUL DIV LESS
-%token <Position> DEQ LTH AND OR EQ MAP REDUCE IOTA ARROW
+%token <Position> DEQ LTH AND OR EQ MAP REDUCE IOTA ARROW REPLICATE FILTER SCAN
 %token <Position> FUN FN COMMA SEMICOLON READ WRITE
 %token <Position> LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY
 %token <Position> TRUE FALSE NOT NEGATE
@@ -53,7 +52,6 @@ let parse_error_rich =
 %left PLUS MINUS LESS
 %left MUL DIV
 %left NEGATE
-
 
 %start Prog
 %type <AbSyn.UntypedProg> Prog
@@ -67,25 +65,28 @@ let parse_error_rich =
 
 %%
 
-Prog :    FunDecs EOF                                   { $1 }
+Prog :    FunDecs EOF   { $1 }
 ;
 
-FunDecs : FUN Fun FunDecs                               { $2 :: $3 }
-        | FUN Fun                                       { $2 :: [] }
+FunDecs : FUN Fun FunDecs { $2 :: $3 }
+        | FUN Fun         { $2 :: [] }
 ;
 
-Fun : Type ID LPAR Params RPAR EQ Exp                   { FunDec (fst $2, $1, $4, $7, snd $2) }
-    | Type ID LPAR RPAR EQ Exp                          { FunDec (fst $2, $1, [], $6, snd $2) }
+Fun : Type ID LPAR Params RPAR EQ Exp
+           { FunDec (fst $2, $1, $4, $7, snd $2) }
+    | Type ID LPAR RPAR EQ Exp
+           { FunDec (fst $2, $1, [], $6, snd $2) }
 ;
 
-Type :   INT                                            { AbSyn.Int }
-     |   CHAR                                           { AbSyn.Char }
-     |   BOOL                                           { AbSyn.Bool }
-     |   LBRACKET Type RBRACKET                         { AbSyn.Array $2 }
+Type :   INT                    { AbSyn.Int }
+     |   CHAR                   { AbSyn.Char }
+     |   BOOL                   { AbSyn.Bool }
+     |   LBRACKET Type RBRACKET { AbSyn.Array $2 }
 ;
 
-Params : Type ID COMMA Params                           { Param (fst $2, $1) :: $4 }
-       | Type ID                                        { Param (fst $2, $1) :: [] }
+Params : Type ID COMMA Params
+                       { Param (fst $2, $1) :: $4 }
+       | Type ID       { Param (fst $2, $1) :: [] }
 ;
 
 ///////////////////////////////////////////////////////
@@ -93,46 +94,59 @@ Params : Type ID COMMA Params                           { Param (fst $2, $1) :: 
 //       add grammer rules for the new expressions
 ///////////////////////////////////////////////////////
 
-Exp : NUM                                               { Constant (IntVal (fst $1), snd $1) }
-    | CHARLIT                                           { Constant (CharVal (fst $1), snd $1) }
-    | ID                                                { Var $1 }
-    | STRINGLIT                                         { StringLit $1 }
-    | LCURLY Exps RCURLY                                { ArrayLit ($2, (), $1) }
-    | TRUE                                              { Constant (BoolVal true, $1) }
-    | FALSE                                             { Constant (BoolVal false, $1) }
-    | NOT Exp                                           { Not ($2, $1) }
-    | NEGATE Exp                                        { Negate ($2, $1) }
-    | Exp PLUS  Exp                                     { Plus ($1, $3, $2) }
-    | Exp MINUS Exp                                     { Minus($1, $3, $2) }
-    | Exp MUL   Exp                                     { Times($1, $3, $2) }
-    | Exp DIV   Exp                                     { Divide($1, $3, $2) }
-    | Exp DEQ   Exp                                     { Equal($1, $3, $2) }
-    | Exp AND   Exp                                     { And($1, $3, $2) }
-    | Exp OR    Exp                                     { Or($1, $3, $2) }
-    | Exp LTH   Exp                                     { Less ($1, $3, $2) }
-    | IF Exp THEN Exp ELSE Exp %prec ifprec             { If ($2, $4, $6, $1) }
-    | ID LPAR Exps RPAR                                 { Apply (fst $1, $3, snd $1) }
-    | ID LPAR RPAR                                      { Apply (fst $1, [], snd $1) }
-    | READ LPAR Type RPAR                               { Read ($3, $1) }
-    | WRITE LPAR Exp RPAR                               { Write ($3, (), $1) }
-    | IOTA LPAR Exp RPAR                                { Iota ($3, $1) }
-    | MAP LPAR FunArg COMMA Exp RPAR                    { Map ($3, $5, (), (), $1) }
-    | REDUCE LPAR FunArg COMMA Exp COMMA Exp RPAR       { Reduce ($3, $5, $7, (), $1) }
-    | LPAR Exp RPAR                                     { $2 }
-
+Exp : NUM            { Constant (IntVal (fst $1), snd $1) }
+    | CHARLIT        { Constant (CharVal (fst $1), snd $1) }
+    | ID             { Var $1 }
+    | STRINGLIT      { StringLit $1 }
+    | LCURLY Exps RCURLY
+                     { ArrayLit ($2, (), $1) }
+    | TRUE           { Constant (BoolVal true, $1) }
+    | FALSE          { Constant (BoolVal false, $1) }
+    | NOT Exp        { Not ($2, $1) }
+    | NEGATE Exp     { Negate ($2, $1) }
+    | Exp PLUS  Exp  { Plus ($1, $3, $2) }
+    | Exp MINUS Exp  { Minus($1, $3, $2) }
+    | Exp MUL   Exp  { Times($1, $3, $2) }
+    | Exp DIV   Exp  { Divide($1, $3, $2) }
+    | Exp DEQ   Exp  { Equal($1, $3, $2) }
+    | Exp AND   Exp  { And($1, $3, $2) }
+    | Exp OR    Exp  { Or($1, $3, $2) }
+    | Exp LTH   Exp  { Less ($1, $3, $2) }
+    | IF Exp THEN Exp ELSE Exp %prec ifprec
+                     { If ($2, $4, $6, $1) }
+    | ID LPAR Exps RPAR
+                     { Apply (fst $1, $3, snd $1) }
+    | ID LPAR RPAR   { Apply (fst $1, [], snd $1) }
+    | READ LPAR Type RPAR
+                     { Read ($3, $1) }
+    | WRITE LPAR Exp RPAR
+                     { Write ($3, (), $1) }
+    | IOTA LPAR Exp RPAR
+                     { Iota ($3, $1) }
+    | MAP LPAR FunArg COMMA Exp RPAR
+                     { Map ($3, $5, (), (), $1) }
+    | REDUCE LPAR FunArg COMMA Exp COMMA Exp RPAR
+                     { Reduce ($3, $5, $7, (), $1) }
+    | REPLICATE LPAR Exp COMMA Exp RPAR { Replicate ($3, $5, (), $1) } // task 2 - løsning replicate
+    | FILTER LPAR FunArg COMMA Exp RPAR { Filter ($3, $5, (), $1) } // task 2 - løsning filter
+    | SCAN LPAR FunArg COMMA Exp COMMA Exp RPAR { Scan ($3, $5, $7, (), $1) } // task 2 - løsning scan
+    | LPAR Exp RPAR  { $2 }
     // TODO: task 1(b): replace this with a more general production
-    | LET ID EQ Exp IN Exp %prec letprec                { Let (Dec (fst $2, $4, $3), $6, $1) }
-    | LET ID EQ Exp SEMICOLON Exp %prec letprec         { Let (Dec (fst $2, $4, $3), $6, $1) }
-    | ID LBRACKET Exp RBRACKET                          { Index (fst $1, $3, (), $2) }
+    | LET ID EQ Exp IN Exp %prec letprec
+                     { Let (Dec (fst $2, $4, $3), $6, $1) }
+    | ID LBRACKET Exp RBRACKET
+                     { Index (fst $1, $3, (), $2) }
 ;
 
-Exps : Exp COMMA Exps                                   { $1 :: $3 }
-     | Exp                                              { $1 :: [] }
+Exps : Exp COMMA Exps { $1 :: $3 }
+     | Exp            { $1 :: [] }
 ;
 
-FunArg : ID                                             { FunName (fst $1 ) }
-       | FN Type LPAR RPAR ARROW Exp                    { Lambda ($2, [], $6, $1) }
-       | FN Type LPAR Params RPAR ARROW Exp             { Lambda ($2, $4, $7, $1) }
+FunArg : ID    { FunName (fst $1 ) }
+       | FN Type LPAR RPAR ARROW Exp
+               { Lambda ($2, [], $6, $1) }
+       | FN Type LPAR Params RPAR ARROW Exp
+               { Lambda ($2, $4, $7, $1) }
 ;
 
 %%
