@@ -156,7 +156,7 @@ let rec evalExp (e : UntypedExp, vtab : VarTable, ftab : FunTable) : Value =
         let res1 = evalExp(e1, vtab, ftab)
         let res2 = evalExp(e2, vtab, ftab)
         match (res1, res2) with
-          | (IntVal n1, IntVal 0) -> raise (Error("cannot divide by zero"))
+          | (IntVal n1, IntVal 0) -> raise (MyError("cannot divide by zero", pos))
           | (IntVal n1, IntVal n2) -> IntVal (n1 / n2)
           | _ -> reportWrongType "Cannot perform DIV because both expression must be of type INT" Int res1 (expPos e1)
   | And (e1, e2, pos) ->
@@ -277,8 +277,21 @@ let rec evalExp (e : UntypedExp, vtab : VarTable, ftab : FunTable) : Value =
          the value of `a`; otherwise raise an error (containing
          a meaningful message).
   *)
-  | Replicate (_, _, _, _) ->
-        failwith "Unimplemented interpretation of replicate"
+  | Replicate (n_exp, a_exp, _, pos) ->
+        let size = evalExp(n_exp, vtab, ftab) // size of new array
+        match size with
+          | IntVal size ->
+              if size >= 0 then
+                let rep  = evalExp(a_exp, vtab, ftab)  // replicate value
+                match rep with
+                | IntVal v -> ArrayVal( List.map (fun x -> IntVal v) [0..size-1], Int )
+                | BoolVal v -> ArrayVal( List.map (fun x -> BoolVal v) [0..size-1], Bool )
+                | CharVal v -> ArrayVal( List.map (fun x -> CharVal v) [0..size-1], Char )
+                | ArrayVal (v,t) -> ArrayVal( List.map (fun x -> ArrayVal (v,t)) [0..size-1], Array t )
+
+              else let msg = sprintf "Fst argument of \"replicate\" is negative: %i" size
+                   raise (MyError(msg, pos))
+          | _ -> reportWrongType "argument of \"replicate\"" Int size pos
 
   (* TODO project task 2: `filter(p, arr)`
        pattern match the implementation of map:
@@ -294,20 +307,27 @@ let rec evalExp (e : UntypedExp, vtab : VarTable, ftab : FunTable) : Value =
         if farg_ret_type = Bool then
           match arr with
             | ArrayVal (lst,tp1) ->
-                let mlst = List.filter (fun x -> (evalFunArg (farg, vtab, ftab, pos, [x])) = BoolVal true) lst
-                ArrayVal (mlst, farg_ret_type)
+                let filter_result = List.filter (fun x -> (evalFunArg (farg, vtab, ftab, pos, [x])) = BoolVal true) lst
+                ArrayVal (filter_result, farg_ret_type)
             | otherwise -> reportNonArray "2nd argument of \"filter\"" arr pos
         else
           raise (MyError ("Interpreter error: Wrong return type of 1st argument of filter. Function return type must be Bool", pos))
-          //failwith "Interpreter error: Wrong return type of 1st argument of filter. Function return type must be Bool"
-
+          // position in this error will point on name of function? definitely not on the first argument
 
   (* TODO project task 2: `scan(f, ne, arr)`
      Implementation similar to reduce, except that it produces an array
      of the same type and length to the input array `arr`.
   *)
-  | Scan (_, _, _, _, _) ->
-        failwith "Unimplemented interpretation of scan"
+  | Scan (farg, ne, arrexp, tp, pos) ->
+        let farg_ret_type = rtpFunArg farg ftab pos
+        let arr  = evalExp(arrexp, vtab, ftab)
+        let nel  = evalExp(ne, vtab, ftab)
+        match arr with
+          | ArrayVal (lst,tp1) ->
+              let scan_result = List.scan (fun acc x -> evalFunArg(farg, vtab, ftab, pos, [acc; x])) nel lst
+              let scan_result_ignore_fst = List.tail scan_result
+              ArrayVal(scan_result_ignore_fst, farg_ret_type)
+          | otherwise -> reportNonArray "3rd argument of \"scan\"" arr pos
 
   | Read (t,p) ->
         let str = Console.ReadLine()

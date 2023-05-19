@@ -454,42 +454,44 @@ let rec compileExp  (e      : TypedExp)
        @ loop_footer
 
   | Map (farg, arr_exp, elem_type, ret_type, pos) ->
-      let size_reg = newReg "size" (* size of input/output array *)
-      let arr_reg  = newReg "arr"  (* address of array *)
-      let elem_reg = newReg "elem" (* address of current element *)
+      let size_reg = newReg "size" (* size of input/output array *) // R_len
+      let arr_reg  = newReg "arr"  (* address of array *)           // R_a
+      let elem_reg = newReg "elem" (* address of current element *) // R_ia
       let res_reg = newReg "res"
-      let arr_code = compileExp arr_exp vtable arr_reg
 
-      let get_size = [ LW (size_reg, arr_reg, 0) ]
+      let arr_code = compileExp arr_exp vtable arr_reg    // A pointer to R_a
+      let get_size = [ LW (size_reg, arr_reg, 0) ] // R_len = R_a[-1]
 
-      let addr_reg = newReg "addrg" (* address of element in new array *)
-      let i_reg = newReg "i"
-      let init_regs = [ ADDI (addr_reg, place, 4)
-                      ; MV (i_reg, Rzero)
-                      ; ADDI (elem_reg, arr_reg, 4)
+      let addr_reg = newReg "addrg" (* address of element in new array *) // R_ib
+      let i_reg = newReg "i"                                              // i
+      let init_regs = [ ADDI (addr_reg, place, 4)           //fra R_ib[-1] til R_ib[0] ?
+                      ; MV (i_reg, Rzero)                                     // i = 0
+                      ; ADDI (elem_reg, arr_reg, 4)                           //fra R_ia[-1] til R_ia[0] ?
                       ]
       let loop_beg = newLab "loop_beg"
       let loop_end = newLab "loop_end"
-      let loop_header = [ LABEL (loop_beg)
-                        ; BGE (i_reg, size_reg, loop_end)
+      let loop_header = [ LABEL (loop_beg)            // lav function-loop igen
+                        ; BGE (i_reg, size_reg, loop_end)               // if i >= R_len, jump loop_end
                         ]
       (* map is 'arr[i] = f(old_arr[i])'. *)
-      let src_size = getElemSize elem_type
-      let dst_size = getElemSize ret_type
+      let src_size = getElemSize elem_type                  // byte size of elem_type
+
+      let dst_size = getElemSize ret_type                   // byte size af return_type
+
       let loop_map =
-             [ Load src_size (res_reg, elem_reg, 0)
-             ; ADDI (elem_reg, elem_reg, elemSizeToInt src_size)
+             [ Load src_size (res_reg, elem_reg, 0)            // måske R_tmp = 0(R_ia) = A[i], res_reg er en temp?
+             ; ADDI (elem_reg, elem_reg, elemSizeToInt src_size)      // R_ia[i+1] ? men så er vi jo på start R_ia[1]?
              ]
-             @ applyFunArg(farg, [res_reg], vtable, res_reg, pos)
+             @ applyFunArg(farg, [res_reg], vtable, res_reg, pos) // res_reg er værdien efter apply function?
              @
-             [ Store dst_size (res_reg, addr_reg, 0)
-             ; ADDI (addr_reg, addr_reg, elemSizeToInt dst_size)
+             [ Store dst_size (res_reg, addr_reg, 0)            // en instruktion? måske 0(R_ib) = B[i] = R_tmp
+             ; ADDI (addr_reg, addr_reg, elemSizeToInt dst_size)    // R_ib[i+1] ?
              ]
 
       let loop_footer =
-              [ ADDI (i_reg, i_reg, 1)
-              ; J loop_beg
-              ; LABEL loop_end
+              [ ADDI (i_reg, i_reg, 1)                                     // i++
+              ; J loop_beg                                                // jump to loop_beg
+              ; LABEL loop_end                                            // has a loop_end...
               ]
       arr_code
        @ get_size
@@ -538,6 +540,7 @@ let rec compileExp  (e      : TypedExp)
          ; LABEL loop_end
          ]
 
+
   (* TODO project task 2:
         `replicate (n, a)`
         `filter (f, arr)`
@@ -563,8 +566,56 @@ let rec compileExp  (e      : TypedExp)
         If `n` is less than `0` then remember to terminate the program with
         an error -- see implementation of `iota`.
   *)
-  | Replicate (_, _, _, _) ->
-      failwith "Unimplemented code generation of replicate"
+  | Replicate (n_exp, a_exp, a_elem_type, (line, _)) ->
+      // size_reg is now the integer n
+      let size_reg = newReg "size"
+      let n_code = compileExp n_exp vtable size_reg
+
+      // rep_value_reg is now the Value-type a
+      let rep_value_reg = newReg "rep_value"
+      let a_code = compileExp a_exp vtable rep_value_reg
+
+      (* Check that array size N >= 0:
+         if N >= 0 then jumpto safe_lab
+         jumpto "_IllegalArrSizeError_"
+         safe_lab: ...
+      *)
+      let safe_lab = newLab "safe"
+      let checksize = [ BGE (size_reg, Rzero, safe_lab)
+                      ; LI (Ra0, line)
+                      ; LA (Ra1, "m.BadSize")
+                      ; J "p.RuntimeError"
+                      ; LABEL (safe_lab)
+                      ]
+
+      let addr_reg = newReg "addr"
+      let i_reg = newReg "i"
+      let init_regs = [ ADDI (addr_reg, place, 4) // addr_reg is now the position of the first array element
+                      ; MV (i_reg, Rzero) ]
+
+      let arr_elem_size = getElemSize a_elem_type
+      (* Run a loop.  Keep jumping back to loop_beg until it is not the
+         case that i_reg < size_reg, and then jump to loop_end. *)
+      let loop_beg = newLab "loop_beg"
+      let loop_end = newLab "loop_end"
+      let loop_header = [ LABEL (loop_beg)
+                        ; BGE (i_reg, size_reg, loop_end)
+                        ]
+      (* replicate is 'arr[i] = a'.  arr[i] is addr_reg. *)
+      let loop_replicate   = [ Store arr_elem_size (rep_value_reg, addr_reg, 0) ]
+      let loop_footer = [ ADDI (addr_reg, addr_reg, elemSizeToInt arr_elem_size)
+                        ; ADDI (i_reg, i_reg, 1)
+                        ; J loop_beg
+                        ; LABEL loop_end
+                        ]
+      n_code
+       @ checksize
+       @ a_code
+       @ dynalloc (size_reg, place, a_elem_type)
+       @ init_regs
+       @ loop_header
+       @ loop_replicate
+       @ loop_footer
 
   (* TODO project task 2: see also the comment to replicate.
      (a) `filter(f, arr)`:  has some similarity with the implementation of map.
@@ -581,8 +632,63 @@ let rec compileExp  (e      : TypedExp)
          counter computed in step (c). You do this of course with a
          `SW(counter_reg, place, 0)` instruction.
   *)
-  | Filter (_, _, _, _) ->
-      failwith "Unimplemented code generation of filter"
+  | Filter (farg, arr_exp, elem_type, pos) ->
+      let size_init_reg = newReg "size" (* size of input/output array *)
+      let arr_reg  = newReg "arr"  (* address of array *)
+      let elem_reg = newReg "elem" (* address of current element *)
+      let res_reg = newReg "res"
+      let counter_reg = newReg "counter" // counter which keeps track of size of new array
+      let arr_code = compileExp arr_exp vtable arr_reg   // uses information from typechecker return?
+
+      let get_size = [ LW (size_init_reg, arr_reg, 0) ]
+
+      let addr_reg = newReg "addrg" (* address of element in new array *)
+      let i_reg = newReg "i"
+      // Making a pointer to new-arr[1], since new-arr[0] tells size of arr,
+      // for future reference we will refer in comments to index with size of array as arr[-1],
+      // and first element after size-element as arr[0]
+      let init_regs = [ ADDI (addr_reg, place, 4)
+                      ; MV (i_reg, Rzero)           // i = 0
+                      ; MV (counter_reg, Rzero)     // counter of new array = 0
+                      ; ADDI (elem_reg, arr_reg, 4) // points to arr[1], since arr[0] tells size of arr
+                      ]
+      let loop_beg = newLab "loop_beg"
+      let loop_end = newLab "loop_end"
+      let loop_header = [ LABEL (loop_beg)
+                        ; BGE (i_reg, size_init_reg, loop_end)
+                        ]
+
+      let arr_elem_size = getElemSize elem_type
+      let func_false = newLab "func_false"
+
+      let loop_filter =
+             [ Load arr_elem_size (res_reg, elem_reg, 0)
+             ; MV (Rt1, res_reg)   // storing value of arr[i] in a temporary register
+             ; ADDI (elem_reg, elem_reg, elemSizeToInt arr_elem_size)
+             ]
+             @ applyFunArg(farg, [res_reg], vtable, res_reg, pos)
+             @
+             [ BEQ (res_reg, Rzero, func_false) // skipping "store" / new-array[i] = arr[i] if function is false
+             ; Store arr_elem_size (Rt1, addr_reg, 0)
+             ; ADDI (addr_reg, addr_reg, elemSizeToInt arr_elem_size)
+             ; ADDI(counter_reg, counter_reg, 1) // counter++
+             ; LABEL (func_false)
+             ]
+
+      let loop_footer =
+              [ ADDI (i_reg, i_reg, 1)
+              ; J loop_beg
+              ; LABEL loop_end
+              ; Store arr_elem_size (counter_reg, place, 0) // stores size of new array back to new-arr[-1]
+              ]
+
+      arr_code
+       @ get_size
+       @ dynalloc (size_init_reg, place, elem_type)
+       @ init_regs
+       @ loop_header
+       @ loop_filter
+       @ loop_footer
 
   (* TODO project task 2: see also the comment to replicate.
      `scan(f, ne, arr)`: you can inspire yourself from the implementation of
@@ -591,8 +697,53 @@ let rec compileExp  (e      : TypedExp)
         the current location of the result iterator at every iteration of
         the loop.
   *)
-  | Scan (_, _, _, _, _) ->
-      failwith "Unimplemented code generation of scan"
+  | Scan (binop, acc_exp, arr_exp, tp, pos) ->
+      let arr_reg  = newReg "arr"   (* address of array *)
+      let size_reg = newReg "size"  (* size of input array *)
+      let i_reg    = newReg "ind_var"   (* loop counter *)
+      let tmp_reg  = newReg "tmp"   (* several purposes *)
+      let loop_beg = newLab "loop_beg"
+      let loop_end = newLab "loop_end"
+
+      let addr_reg = newReg "addrg" (* address of element in new array *)
+
+      let elem_size = getElemSize tp
+
+      let arr_code = compileExp arr_exp vtable arr_reg
+      let get_size = [ LW(size_reg, arr_reg, 0) ]
+
+      let acc_reg  = newReg "acc"   // Accumulate value
+      (* Compile initial value into place (will be updated below) *)
+      let acc_code = compileExp acc_exp vtable acc_reg
+
+      (* Set arr_reg to address of first element instead. *)
+      (* Set i_reg to 0. While i < size_reg, loop. *)
+      let loop_code =
+              [ ADDI (addr_reg, place, 4)
+              ; ADDI (arr_reg, arr_reg, 4)
+              ; MV (i_reg, Rzero)
+              ; LABEL (loop_beg)
+              ; BGE (i_reg, size_reg, loop_end)
+              ]
+      (* Load arr[i] into tmp_reg *)
+      let load_code =
+        [ Load elem_size (tmp_reg, arr_reg, 0)
+        ; ADDI (arr_reg, arr_reg, elemSizeToInt elem_size)
+        ]
+
+      (* place := binop(place, tmp_reg) *)
+      let apply_code =
+            applyFunArg(binop, [acc_reg; tmp_reg], vtable, acc_reg, pos)
+            @
+            [ Store elem_size (acc_reg, addr_reg, 0)
+            ; ADDI (addr_reg, addr_reg, elemSizeToInt elem_size)
+            ]
+
+      arr_code @ get_size @ dynalloc (size_reg, place, tp) @ acc_code @ loop_code @ load_code @ apply_code @
+         [ ADDI(i_reg, i_reg, 1)
+         ; J loop_beg
+         ; LABEL loop_end
+         ]
 
 and applyFunArg ( ff     : TypedFunArg
                 , args   : reg list
