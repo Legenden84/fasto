@@ -361,16 +361,48 @@ let rec compileExp  (e      : TypedExp)
   | And (e1, e2, pos) ->
       let t1 = newReg "and_L"
       let t2 = newReg "and_R"
+      let labelTrue = newLab "L_true"
+      let labelEnd = newLab "L_end"
       let code1 = compileExp e1 vtable t1
       let code2 = compileExp e2 vtable t2
-      code1 @ code2 @ [AND (place,t1,t2)]
+
+      let fstBoolCheck =
+        [BNE (t1, Rzero, labelTrue)         // If first Exp = true, then evaluate second Exp
+        ; LI (place, 0)                     // First Exp = false  -->  second Exp = false
+        ; J labelEnd]
+
+      let sndBoolCheck =
+        [ LABEL (labelTrue)]
+        @
+        code2
+        @
+        [ MV (place, t2)                    // First Exp = true  -->  second Exp = e2
+        ; LABEL (labelEnd)]
+
+      code1 @ fstBoolCheck @ sndBoolCheck
 
   | Or (e1, e2, pos) ->
       let t1 = newReg "or_L"
       let t2 = newReg "or_R"
+      let labelFalse = newLab "L_true"
+      let labelEnd = newLab "L_end"
       let code1 = compileExp e1 vtable t1
       let code2 = compileExp e2 vtable t2
-      code1 @ code2 @ [OR (place,t1,t2)]
+
+      let fstBoolCheck =
+        [BEQ (t1, Rzero, labelFalse)         // If first Exp = false, then evaluate second Exp
+        ; LI (place, 1)                      // First Exp = true  -->  second Exp = true
+        ; J labelEnd]
+
+      let sndBoolCheck =
+        [ LABEL (labelFalse)]
+        @
+        code2
+        @
+        [ MV (place, t2)                    // First Exp = false  -->  second Exp = e2
+        ; LABEL (labelEnd)]
+
+      code1 @ fstBoolCheck @ sndBoolCheck
 
   (* Indexing:
      1. generate code to compute the index
