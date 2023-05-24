@@ -68,7 +68,8 @@ let rec removeDeadBindingsInExp (e : TypedExp) : (bool * DBRtab * TypedExp) =
                         you need to record it in a new symbol table.
                   - 3rd element of the tuple: should be the optimised expression.
             *)
-            failwith "Unimplemented removeDeadBindingsInExp for Var"
+            let uses = SymTab.bind name () (SymTab.empty()) // recording Var in DBRtable
+            (false, uses, Var (name, pos)) // 1st element of tuple is false, since a string/name can't contain IO
         | Plus (x, y, pos) ->
             let (xios, xuses, x') = removeDeadBindingsInExp x
             let (yios, yuses, y') = removeDeadBindingsInExp y
@@ -118,8 +119,9 @@ let rec removeDeadBindingsInExp (e : TypedExp) : (bool * DBRtab * TypedExp) =
                         expression `e` and to propagate its results (in addition
                         to recording the use of `name`).
             *)
-            failwith "Unimplemented removeDeadBindingsInExp for Index"
-
+            let uses = SymTab.bind name () (SymTab.empty()) // recording Var in DBRtable
+            let (eios, euses, e') = removeDeadBindingsInExp e
+            (eios, uses, Index (name, e', t, pos))
         | Let (Dec (name, e, decpos), body, pos) ->
             (* Task 3, Hints for the `Let` case:
                   - recursively process the `e` and `body` subexpressions
@@ -142,9 +144,22 @@ let rec removeDeadBindingsInExp (e : TypedExp) : (bool * DBRtab * TypedExp) =
                     used-variable table should describe the expression
                     *resulting* from the optmization, not the original
                     Let-expression.
-
             *)
-            failwith "Unimplemented removeDeadBindingsInExp for Let"
+            let (eios, euses, e') = removeDeadBindingsInExp e
+            let (bios, buses, body') = removeDeadBindingsInExp body
+            let hasIO = eios || bios
+            // If current Var is in our DBRtab, then we remove it from the DBRtab. This means that we don't
+            // have to perform Dead-Binding-Removal on current Var since it is being used in its body-Exp
+            let Vars_DBRtab = SymTab.combine (SymTab.remove name buses) euses
+
+            // checking if current Var is in its body-Exp. If true then we don't eliminate the current Var Exp
+            if hasIO || isUsed name buses then
+                (hasIO, Vars_DBRtab, Let (Dec (name, e', decpos), body', pos)) // Keep current Exp since current Var exists in its body-Exp
+            else
+                // Delete current Exp since current Var does not exist in its body-Exp
+                // buses = table of used variables in current Var's body-Exp
+                // body' = body-Exp of the curr-Var-name
+                (bios, buses, body')
         | Iota (e, pos) ->
             let (io, uses, e') = removeDeadBindingsInExp e
             (io,

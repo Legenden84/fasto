@@ -161,17 +161,15 @@ let rec evalExp (e : UntypedExp, vtab : VarTable, ftab : FunTable) : Value =
           | _ -> reportWrongType "Cannot perform DIV because both expression must be of type INT" Int res1 (expPos e1)
   | And (e1, e2, pos) ->
         let res1 = evalExp(e1, vtab, ftab)
-        let res2 = evalExp(e2, vtab, ftab)
         match (res1) with
-          | (BoolVal true) -> res2
+          | (BoolVal true) -> evalExp(e2, vtab, ftab)
           | (BoolVal false) -> BoolVal false
           | (_) -> reportWrongType "left operand of &&" Int res1 (expPos e1)
   | Or (e1, e2, pos) ->
         let res1 = evalExp(e1, vtab, ftab)
-        let res2 = evalExp(e2, vtab, ftab)
         match (res1) with
           | (BoolVal true) -> BoolVal true
-          | (BoolVal false) -> res2
+          | (BoolVal false) -> evalExp(e2, vtab, ftab)
           | (_) -> reportWrongType "left operand of ||" Int res1 (expPos e1)
   | Not(e1, pos) ->
         let res1 = evalExp(e1, vtab, ftab)
@@ -308,11 +306,10 @@ let rec evalExp (e : UntypedExp, vtab : VarTable, ftab : FunTable) : Value =
           match arr with
             | ArrayVal (lst,tp1) ->
                 let filter_result = List.filter (fun x -> (evalFunArg (farg, vtab, ftab, pos, [x])) = BoolVal true) lst
-                ArrayVal (filter_result, farg_ret_type)
+                ArrayVal (filter_result, tp1)
             | otherwise -> reportNonArray "2nd argument of \"filter\"" arr pos
         else
           raise (MyError ("Interpreter error: Wrong return type of 1st argument of filter. Function return type must be Bool", pos))
-          // position in this error will point on name of function? definitely not on the first argument
 
   (* TODO project task 2: `scan(f, ne, arr)`
      Implementation similar to reduce, except that it produces an array
