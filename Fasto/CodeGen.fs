@@ -245,12 +245,21 @@ let rec compileExp  (e      : TypedExp)
       let code2 = compileExp e2 vtable t2
       code1 @ code2 @ [MUL (place,t1,t2)]
 
-  | Divide (e1, e2, pos) ->
+  | Divide (e1, e2, (line,_)) ->
     let t1 = newReg "divide_L"
     let t2 = newReg "divide_R"
     let code1 = compileExp e1 vtable t1
     let code2 = compileExp e2 vtable t2
-    code1 @ code2 @ [DIV (place,t1,t2)]
+
+    let safe_lab = newLab  "safe"
+    let checkDiv0 = [ BNE (t2, Rzero, safe_lab)
+                                       ; LI (Ra0, line)
+                                       ; LA (Ra1, "cantDivideZero")
+                                       ; J "p.RuntimeError"
+                                       ; LABEL (safe_lab)
+                                       ]
+
+    code1 @ code2 @ checkDiv0 @ [DIV (place,t1,t2)]
 
   | Not (e1, pos) ->
       let t1 = newReg "not"

@@ -29,9 +29,12 @@ let rec copyConstPropFoldExp (vtable : VarTable)
                 with the variable or constant to be propagated.
             *)
             (match SymTab.lookup name vtable with
-            | Some (ConstProp con) -> Constant (con, pos) // e.g if x = 5, then x will be replaced with 5 in other exps
-            | Some (VarProp varName) -> Var (varName, pos) // e.g if x = y, then x will be replaced with y in other exps
-            | None -> Var (name, pos))
+            | Some (ConstProp con) ->
+                Constant (con, pos) // e.g if x = 5, then x will be replaced with 5 in other exps
+            | Some (VarProp varName) ->
+                Var (varName, pos) // e.g if x = y, then x will be replaced with y in other exps
+            | None ->
+                Var (name, pos))
         | Index (name, e, t, pos) ->
             (* TODO project task 3:
                 Should probably do the same as the `Var` case, for
@@ -56,14 +59,14 @@ let rec copyConstPropFoldExp (vtable : VarTable)
                     let vtable' = SymTab.bind name (VarProp name') vtable // [("x", VarProp "a");...]
                     let body_opt = copyConstPropFoldExp vtable' body                      // e.g. y = x --> y = a
                     Let (Dec (name, e', decpos), body_opt, pos)
-                | Constant (IntVal con, pos') ->
+                | Constant (value, pos') ->
                     (* TODO project task 3:
                         Hint: I have discovered a constant-copy statement `let x = 5`.
                               I should probably record it in the `vtable` by
                               associating `x` with a constant-propagatee binding,
                               and optimize the `body` of the let.
                     *)
-                    let vtable' = SymTab.bind name (ConstProp (IntVal con)) vtable // [("x", ConstProp Intval 5);...]
+                    let vtable' = SymTab.bind name (ConstProp (value)) vtable // [("x", ConstProp Intval 5);...]
                     let body_opt = copyConstPropFoldExp vtable' body                               // e.g. y = x + 3  --> y = 5' + 3
                     Let (Dec (name, e', decpos), body_opt, pos)
                 | Let ((Dec (nameX, e1, decposX)), e2, posX) ->
@@ -84,7 +87,6 @@ let rec copyConstPropFoldExp (vtable : VarTable)
                 | _ -> (* Fallthrough - for everything else, do nothing *)
                     let body' = copyConstPropFoldExp vtable body
                     Let (Dec (name, e', decpos), body', pos)
-
         | Times (e1, e2, pos) ->
             (* TODO project task 3: implement as many safe algebraic
                simplifications as you can think of. You may inspire
@@ -106,26 +108,10 @@ let rec copyConstPropFoldExp (vtable : VarTable)
             (* TODO project task 3: see above. You may inspire yourself from
                `Or` below, but that only scratches the surface of what's possible *)
             let e1' = copyConstPropFoldExp vtable e1
-            let e2' = copyConstPropFoldExp vtable e2
-            printfn"in And now"
-            printfn"e1' = %A" e1'
-            printfn"e2' = %A" e2'
-            match (e1', e2') with
-            | (Constant (BoolVal true, _), _) ->
-                printfn"true case 1 \n"
-                e2'
-            | (_, Constant (BoolVal true, _)) ->
-                printfn"true case 2 \n"
-                e1'
-            | (Constant (BoolVal false, _), _) ->
-                printfn"false case 1 \n"
-                Constant (BoolVal false, pos)
-            | (_, Constant (BoolVal false, _)) ->
-                printfn"false case 2 \n"
-                Constant (BoolVal false, pos)
-            | _ ->
-                printfn"nothing \n"
-                And (e1', e2', pos)
+            match (e1') with
+            | Constant (BoolVal true, _) -> copyConstPropFoldExp vtable e2
+            | Constant (BoolVal false, _) -> Constant (BoolVal false, pos)
+            | _ -> And (e1', (copyConstPropFoldExp vtable e2), pos)
         | Constant (x,pos) -> Constant (x,pos)
         | StringLit (x,pos) -> StringLit (x,pos)
         | ArrayLit (es, t, pos) ->
@@ -221,15 +207,9 @@ let rec copyConstPropFoldExp (vtable : VarTable)
                 | _ -> Or (e1', e2', pos)
         | Not (e, pos) ->
             let e' = copyConstPropFoldExp vtable e
-            printfn"in not now"
-            printfn"e' = %A" e'
             match e' with
-                | Constant (BoolVal a, _) ->
-                    printfn"not case 1 \n"
-                    Constant (BoolVal (not a), pos)
-                | _ ->
-                    printfn"not case 2 \n"
-                    Not (e', pos)
+                | Constant (BoolVal a, _) -> Constant (BoolVal (not a), pos)
+                | _ -> Not (e', pos)
         | Negate (e, pos) ->
             let e' = copyConstPropFoldExp vtable e
             match e' with
