@@ -48,10 +48,13 @@ let parse_error_rich =
 %token <Position> TRUE FALSE NOT NEGATE
 
 %nonassoc ifprec letprec
-%left DEQ LTH AND OR NOT
-%left PLUS MINUS LESS
+%left OR
+%left AND
+%nonassoc NOT
+%left DEQ LTH
+%left PLUS MINUS
 %left MUL DIV
-%left NEGATE
+%nonassoc NEGATE
 
 %start Prog
 %type <AbSyn.UntypedProg> Prog
