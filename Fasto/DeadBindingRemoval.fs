@@ -148,6 +148,7 @@ let rec removeDeadBindingsInExp (e : TypedExp) : (bool * DBRtab * TypedExp) =
             let (eios, euses, e') = removeDeadBindingsInExp e
             let (bios, buses, body') = removeDeadBindingsInExp body
             let hasIO = eios || bios
+
             // If current Var is in our DBRtab, then we remove it from the DBRtab. This means that we don't
             // have to perform Dead-Binding-Removal on current Var since it is being used in its body-Exp
             let Vars_DBRtab = SymTab.combine (SymTab.remove name buses) euses

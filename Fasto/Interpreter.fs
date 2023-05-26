@@ -282,11 +282,7 @@ let rec evalExp (e : UntypedExp, vtab : VarTable, ftab : FunTable) : Value =
               if size >= 0 then
                 let rep  = evalExp(a_exp, vtab, ftab)  // replicate value
                 match rep with
-                | IntVal v -> ArrayVal( List.map (fun x -> IntVal v) [0..size-1], Int )
-                | BoolVal v -> ArrayVal( List.map (fun x -> BoolVal v) [0..size-1], Bool )
-                | CharVal v -> ArrayVal( List.map (fun x -> CharVal v) [0..size-1], Char )
-                | ArrayVal (v,t) -> ArrayVal( List.map (fun x -> ArrayVal (v,t)) [0..size-1], Array t )
-
+                | value -> ArrayVal( List.map (fun x -> value) [0..size-1], Int )
               else let msg = sprintf "Fst argument of \"replicate\" is negative: %i" size
                    raise (MyError(msg, pos))
           | _ -> reportWrongType "argument of \"replicate\"" Int size pos

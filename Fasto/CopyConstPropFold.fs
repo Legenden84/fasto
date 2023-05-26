@@ -29,12 +29,9 @@ let rec copyConstPropFoldExp (vtable : VarTable)
                 with the variable or constant to be propagated.
             *)
             (match SymTab.lookup name vtable with
-            | Some (ConstProp con) ->
-                Constant (con, pos) // e.g if x = 5, then x will be replaced with 5 in other exps
-            | Some (VarProp varName) ->
-                Var (varName, pos) // e.g if x = y, then x will be replaced with y in other exps
-            | None ->
-                Var (name, pos))
+            | Some (ConstProp con) -> Constant (con, pos) // e.g if x = 5, then x will be replaced with 5 in other exps
+            | Some (VarProp varName) -> Var (varName, pos) // e.g if x = y, then x will be replaced with y in other exps
+            | None -> Var (name, pos))
         | Index (name, e, t, pos) ->
             (* TODO project task 3:
                 Should probably do the same as the `Var` case, for
@@ -81,9 +78,9 @@ let rec copyConstPropFoldExp (vtable : VarTable)
                         restructured, semantically-equivalent expression:
                                 `let x = e1 in let y = e2 in e3`
                     *)
-                    let outer_let = Let (Dec (name, e2, decposX), body, posX) // let y = (let x = e1 in e2) in e3 --> y in e3
-                    let outer_let_opt = copyConstPropFoldExp vtable outer_let // Optimizing outer-let-expression
-                    Let (Dec (nameX, e1, decpos), outer_let_opt, pos)
+                    let outer_let = Let (Dec (name, e2, decposX), body, pos) // let y = e2 in e3
+                    let outer_let_opt = copyConstPropFoldExp vtable outer_let // Optimizing let y = e2 in e3
+                    Let (Dec (nameX, e1, decpos), outer_let_opt, posX) // Return x = e1 in (optimize let y = e2 in e3)
                 | _ -> (* Fallthrough - for everything else, do nothing *)
                     let body' = copyConstPropFoldExp vtable body
                     Let (Dec (name, e', decpos), body', pos)

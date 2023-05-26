@@ -254,7 +254,7 @@ let rec compileExp  (e      : TypedExp)
     let safe_lab = newLab  "safe"
     let checkDiv0 = [ BNE (t2, Rzero, safe_lab)
                                        ; LI (Ra0, line)
-                                       ; LA (Ra1, "cantDivideZero")
+                                       ; LA (Ra1, "m.DivZero")
                                        ; J "p.RuntimeError"
                                        ; LABEL (safe_lab)
                                        ]
